@@ -1,0 +1,621 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ interview.title }} &bull; AI Interview Studio &bull; InterViewStudio AI{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 1.5rem; padding-bottom: 5rem; max-width: 1100px;">
+
+  <!-- Studio Header Strip -->
+  <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="padding: 0.4rem 0.75rem;" title="Return to Dashboard">
+        &larr; Exit
+      </a>
+      <div>
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; line-height: 1.2;">{{ interview.title }}</h2>
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+          {{ interview.get_persona_display }} &bull; {{ interview.get_difficulty_display }}
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+      <span class="glass-pill privacy-pill" id="studio-privacy-badge">
+        <span class="privacy-dot"></span>
+        Zero Video Uploads (Active Local Loopback)
+      </span>
+      {% if interview.mode == 'anxiety_free' %}
+        <span class="glass-pill" style="border-color: rgba(16, 185, 129, 0.35); color: #34d399; font-size: 0.75rem;">
+          Anxiety-Free Mode
+        </span>
+      {% else %}
+        <span class="glass-pill" style="border-color: rgba(6, 182, 212, 0.35); color: var(--brand-cyan); font-size: 0.75rem;">
+          Standard Scored Mode
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tech Check Wizard Stepper (Only visible during pre-flight diagnostics) -->
+  <div class="tech-check-stepper" id="tech-check-stepper" {% if interview.status == 'in_progress' %}style="display: none;"{% endif %}>
+    <div class="step-indicator active" id="step-pill-consent">
+      <span>1. Privacy &amp; Consent</span>
+    </div>
+    <div class="step-indicator" id="step-pill-hardware">
+      <span>2. Device Permissions</span>
+    </div>
+    <div class="step-indicator" id="step-pill-analysis">
+      <span>3. Studio Diagnostics</span>
+    </div>
+    <div class="step-indicator" id="step-pill-summary">
+      <span>4. Readiness Score</span>
+    </div>
+  </div>
+
+  <!-- Hardware Error Warning Banner (Initially Hidden) -->
+  <div class="media-error-banner" id="media-error-banner" style="display: none;">
+    <div class="media-error-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    </div>
+    <div style="flex: 1;">
+      <div id="media-error-text">Media devices error.</div>
+    </div>
+    <button type="button" class="btn btn-secondary" id="btn-retest-hardware" style="font-size: 0.8rem; padding: 0.4rem 0.85rem; border-color: rgba(244, 63, 94, 0.4); flex-shrink: 0;">
+      Retry Access
+    </button>
+  </div>
+
+  <!-- =========================================================================
+       STEP 1: PRIVACY CONSENT SCREEN
+       ========================================================================= -->
+  <div id="step-panel-consent" {% if interview.status == 'in_progress' %}style="display: none;"{% endif %}>
+    <div class="glass-panel" style="padding: 3rem 2.5rem; text-align: center; max-width: 780px; margin: 0 auto;">
+      <div class="brand-icon" style="margin: 0 auto 1.5rem; width: 56px; height: 56px; border-radius: 16px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+      </div>
+
+      <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.75rem; letter-spacing: -0.02em;">
+        Studio Privacy &amp; Local Hardware Consent
+      </h1>
+      <p style="color: var(--text-secondary); font-size: 1rem; line-height: 1.6; max-width: 620px; margin: 0 auto 2rem;">
+        Before entering the interview studio, InterViewStudio requires access to your camera and microphone. 
+        Your privacy is strictly safeguarded by our <strong>Zero Video Upload</strong> architecture.
+      </p>
+
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); padding: 1.5rem; text-align: left; margin-bottom: 2rem;">
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 1rem;">
+          <span style="color: var(--brand-emerald); font-weight: bold; font-size: 1.1rem;">&#10003;</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 0.95rem;">100% In-Browser Execution</strong>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">All facial tracking, gaze monitoring, and posture detection algorithms execute locally in your browser via WebAssembly (WASM).</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 1rem;">
+          <span style="color: var(--brand-emerald); font-weight: bold; font-size: 1.1rem;">&#10003;</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 0.95rem;">Zero Cloud Video or Audio Storage</strong>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">Raw audio files and video frames are never streamed, stored, or recorded on any server. Only numeric metrics and recognized text are transmitted.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
+          <span style="color: var(--brand-emerald); font-weight: bold; font-size: 1.1rem;">&#10003;</span>
+          <div>
+            <strong style="color: var(--text-primary); font-size: 0.95rem;">Complete Right to Erasure</strong>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem;">You can permanently purge all stored interview transcripts and score data at any time from your dashboard.</p>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-primary btn-lg" id="btn-grant-consent" style="padding: 0.9rem 2.2rem; font-size: 1.05rem;">
+        Grant Hardware Access &amp; Begin Tech Check &rarr;
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       STEP 2 & 3: INTERACTIVE STUDIO DIAGNOSTICS STAGE
+       ========================================================================= -->
+  <div id="step-panel-analysis" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1.6fr 1.2fr; gap: 1.5rem; align-items: start;">
+
+      <!-- Left Column: Camera Viewport -->
+      <div class="glass-panel" style="padding: 1.5rem;">
+        <div class="studio-video-frame">
+          <div class="studio-overlay-badge">
+            <span class="privacy-dot"></span>
+            <span>Local MediaStream &bull; Active Loopback</span>
+          </div>
+
+          <!-- Video Element (Mirrored via CSS) -->
+          <video id="tech-check-video" class="studio-video-element" autoplay playsinline muted></video>
+
+          <!-- Alignment Oval Overlay -->
+          <div class="camera-guide-target" id="camera-guide-target"></div>
+        </div>
+
+        <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-secondary);">
+          <span>Keep your face centered inside the dotted guide</span>
+          <span style="color: var(--brand-cyan); font-family: var(--font-mono);">Rec. 601 Luminance Sensor Active</span>
+        </div>
+      </div>
+
+      <!-- Right Column: Diagnostics Telemetry -->
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        
+        <!-- Hardware Status & Readiness Score Card -->
+        <div class="glass-panel" style="padding: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+            <div>
+              <h3 style="font-size: 1.15rem; font-weight: 700;">Studio Readiness</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted);">Calibrating camera, mic, and studio lighting</p>
+            </div>
+            <div style="text-align: right;">
+              <span id="readiness-score-text" style="font-size: 2.25rem; font-weight: 800; color: var(--brand-cyan); font-family: var(--font-mono);">
+                0%
+              </span>
+            </div>
+          </div>
+
+          <!-- Lighting Diagnostic Row -->
+          <div class="diagnostic-item" id="diag-lighting-item">
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">Studio Lighting</div>
+              <div id="lighting-status-text" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                Measuring canvas luminance...
+              </div>
+            </div>
+            <span id="lighting-score-text" style="font-family: var(--font-mono); font-weight: 700; font-size: 1rem; color: var(--text-primary);">
+              --
+            </span>
+          </div>
+
+          <!-- Audio Level & VU Meter Row -->
+          <div class="diagnostic-item" id="diag-audio-item" style="flex-direction: column; align-items: stretch; gap: 0.65rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 600; font-size: 0.9rem;">Microphone Sensitivity</div>
+                <div id="audio-status-text" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                  Say a test phrase out loud...
+                </div>
+              </div>
+              <span class="glass-pill" style="font-size: 0.7rem; padding: 0.2rem 0.6rem;">Web Audio Analyser</span>
+            </div>
+            <!-- Live Animated VU Meter Bar -->
+            <div class="vu-meter-container">
+              <div class="vu-meter-fill" id="vu-meter-fill"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actionable Recommendations Card -->
+        <div class="glass-panel suggestions-box">
+          <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary);">
+            Environment Suggestions
+          </h4>
+          <div id="tech-check-suggestions">
+            <div style="color: var(--text-muted); font-size: 0.85rem;">Analyzing camera feed and background lighting...</div>
+          </div>
+        </div>
+
+        <!-- Finish Button -->
+        <button type="button" class="btn btn-secondary btn-block btn-lg" id="tech-check-finish-btn" disabled>
+          Proceed to Studio &rarr;
+        </button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       STEP 4: DIAGNOSTICS VALIDATED INTERMEDIARY
+       ========================================================================= -->
+  <div id="step-panel-studio" style="display: none;">
+    <div class="glass-panel" style="padding: 3rem 2rem; text-align: center; max-width: 800px; margin: 0 auto;">
+      <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--brand-emerald); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; color: var(--brand-emerald); font-size: 1.8rem;">
+        &#10003;
+      </div>
+      <h2 style="font-size: 1.85rem; font-weight: 800; margin-bottom: 0.75rem;">
+        Studio Diagnostics Completed &bull; Environment Ready
+      </h2>
+      <p style="color: var(--text-secondary); max-width: 560px; margin: 0 auto 2rem; font-size: 0.95rem; line-height: 1.6;">
+        Your camera lighting, microphone gain, and hardware telemetry have been validated and saved to your session. 
+        Your video feed remains exclusively in local memory.
+      </p>
+
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" onclick="location.reload()">
+          Re-run Tech Check
+        </button>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-enter-active-room" style="box-shadow: 0 0 25px var(--brand-cyan-glow);">
+          Proceed to 10-Second Baseline Calibration &rarr;
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       PHASE 6: 10-SECOND NEUTRAL POSTURE BASELINE CALIBRATION
+       ========================================================================= -->
+  <div id="step-panel-calibration" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1.4fr 1.2fr; gap: 1.5rem; align-items: center; max-width: 960px; margin: 0 auto;">
+
+      <!-- Camera Feed with Calibration Overlay -->
+      <div class="glass-panel" style="padding: 1.5rem;">
+        <div class="studio-video-frame">
+          <div class="studio-overlay-badge">
+            <span class="privacy-dot"></span>
+            <span>Zero Video Uploads &bull; Edge CV Active</span>
+          </div>
+
+          <video id="calibration-video" class="studio-video-element" autoplay playsinline muted></video>
+          <div class="camera-guide-target" style="border-color: var(--brand-cyan); animation: cyber-grid-pulse 2s infinite alternate;"></div>
+        </div>
+      </div>
+
+      <!-- Calibration Progress & Guidance -->
+      <div class="glass-panel" style="padding: 2.5rem 2rem; text-align: center;">
+        <div class="calibration-ring-wrap">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="60" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="8"></circle>
+            <circle id="calibration-circle-progress" class="calibration-progress-circle" cx="70" cy="70" r="60" fill="none" stroke="var(--brand-cyan)" stroke-width="8" stroke-dasharray="376.99" stroke-dashoffset="0"></circle>
+          </svg>
+          <span class="calibration-countdown-number" id="calibration-countdown-secs">10</span>
+        </div>
+
+        <h3 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 0.5rem;">
+          Calibrating Neutral Baseline
+        </h3>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.25rem;">
+          Sit upright and look comfortably toward the screen center. Our client-side model is establishing your personal posture baseline to eliminate camera-angle bias.
+        </p>
+
+        <div class="glass-pill" style="font-size: 0.8rem; border-color: rgba(6, 182, 212, 0.4); color: var(--brand-cyan);" id="calibration-status-pill">
+          Measuring shoulder alignment &amp; gaze origin...
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       PHASE 5 & 6: LIVE AI CONVERSATIONAL INTERVIEW STAGE + POSTURE HUD
+       ========================================================================= -->
+  <div id="step-panel-interview-live" {% if interview.status == 'in_progress' %}style="display: block;"{% else %}style="display: none;"{% endif %}>
+    
+    <!-- Live Studio Top HUD -->
+    <div class="glass-panel" style="padding: 1rem 1.5rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <div class="persona-avatar-frame" id="studio-persona-avatar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--brand-cyan);">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+          </svg>
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>{{ interview.get_persona_display }}</span>
+            <span class="persona-status-pill status-ready" id="studio-persona-status">Ready</span>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+            Autonomous Conversational Evaluator &bull; Web Speech TTS Active
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span class="glass-pill" id="studio-question-order" style="font-family: var(--font-mono); font-weight: 600; font-size: 0.85rem; border-color: var(--brand-cyan);">
+          Question 1 of 5
+        </span>
+        <button type="button" class="btn btn-secondary" id="studio-mute-voice-btn" style="padding: 0.4rem 0.85rem; font-size: 0.82rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          AI Voice On
+        </button>
+      </div>
+    </div>
+
+    <!-- Feedback Toast -->
+    <div id="studio-feedback-toast" class="studio-feedback-toast" style="display: none; margin-bottom: 1.25rem;"></div>
+
+    <!-- Live Studio 2-Column Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 1.5rem; align-items: start;">
+
+      <!-- Left Column: Local Video Viewport with Live Posture & Gaze HUD -->
+      <div class="glass-panel" style="padding: 1.25rem;">
+        <div class="studio-video-frame" style="max-height: 280px; position: relative;">
+          <div class="studio-overlay-badge">
+            <span class="privacy-dot"></span>
+            <span>Local RAM Loopback</span>
+          </div>
+          <video id="studio-live-video" class="studio-video-element" autoplay playsinline muted></video>
+
+          <!-- Real-Time Posture & Gaze HUD Indicator (Phase 6) -->
+          <div id="studio-posture-status-badge" class="posture-status-hud-badge hud-good">
+            <span id="studio-posture-status-text">✓ Posture &amp; Gaze Aligned</span>
+            <span style="font-family: var(--font-mono); font-size: 0.7rem; opacity: 0.75;">Local Vision Shield</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+          <span>Camera Status: Mirrored Local Loop</span>
+          <span style="color: var(--brand-emerald); font-weight: 600;">● Active Shield</span>
+        </div>
+      </div>
+
+      <!-- Right Column: AI Interviewer Question & Candidate Response Console -->
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+
+        <!-- Active Question Card -->
+        <div class="glass-panel" style="padding: 1.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <span class="glass-pill" id="studio-question-category" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border-color: rgba(6, 182, 212, 0.4); color: var(--brand-cyan);">
+                Technical Depth
+              </span>
+              <span class="glass-pill" id="studio-followup-badge" style="display: none; font-size: 0.72rem; border-color: rgba(139, 92, 246, 0.5); color: #c084fc;">
+                Adaptive Follow-Up Probe
+              </span>
+            </div>
+
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button type="button" class="btn btn-secondary" id="studio-hint-btn" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; border-color: rgba(245, 158, 11, 0.45); color: #fbbf24;">
+                💡 Need a Hint?
+              </button>
+              <button type="button" class="btn btn-secondary" id="studio-repeat-question-btn" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                Listen Again
+              </button>
+            </div>
+          </div>
+
+          <h3 id="studio-question-text" style="font-size: 1.25rem; font-weight: 700; line-height: 1.5; color: var(--text-primary);">
+            Loading question from AI interviewer...
+          </h3>
+          <div id="studio-hint-box" style="display: none; margin-top: 0.9rem; padding: 0.85rem 1rem; border-radius: var(--radius-sm); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); color: #fde68a; font-size: 0.88rem; line-height: 1.5;"></div>
+        </div>
+
+        <!-- Candidate Live Response Console -->
+        <div class="glass-panel" style="padding: 1.75rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
+            <div style="font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+              <span>Your Spoken Response</span>
+              <span class="glass-pill" id="studio-word-count" style="font-size: 0.72rem; padding: 0.15rem 0.55rem;">0 words</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="glass-pill" style="font-family: var(--font-mono); font-size: 0.82rem; border-color: rgba(255, 255, 255, 0.2);" id="studio-timer-display">
+                00:00
+              </span>
+            </div>
+          </div>
+
+          <!-- Transcript Stream Textarea (Editable fallback) -->
+          <textarea 
+            id="studio-transcript-input" 
+            class="studio-transcript-textarea" 
+            placeholder="Click 'Start Answering' or speak. Your speech transcript streams here in real time..."
+          ></textarea>
+
+          <!-- Interaction Control Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; gap: 0.75rem;">
+              <button type="button" class="btn btn-primary btn-lg" id="studio-mic-toggle-btn" style="min-width: 175px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                <span>🎙️ Start Answering</span>
+              </button>
+
+              <button type="button" class="btn btn-secondary btn-lg" id="studio-submit-answer-btn">
+                ⏹️ Submit Answer
+              </button>
+            </div>
+
+            <button type="button" class="btn btn-ghost" id="studio-switch-input-mode-btn" style="font-size: 0.82rem; color: var(--text-muted);">
+              Switch to Typed Fallback
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- =========================================================================
+       INTERVIEW COMPLETION MODAL / CELEBRATION
+       ========================================================================= -->
+  <div id="studio-completion-modal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="glass-panel modal-content-card" style="text-align: center; padding: 3rem 2.25rem; max-width: 580px;">
+      <div style="font-size: 3.5rem; margin-bottom: 1rem;">🏆</div>
+      <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.02em;">
+        Interview Session Completed!
+      </h2>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.6; max-width: 440px; margin: 0 auto 1.5rem;">
+        Great job! All technical questions and adaptive follow-up probes have been evaluated. 
+        Your response scores and performance metrics are ready.
+      </p>
+
+      <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; background: rgba(255, 255, 255, 0.02);">
+        <div style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem;">
+          Overall Technical Score
+        </div>
+        <div id="studio-completion-score" style="font-size: 3rem; font-weight: 800; color: var(--brand-cyan); font-family: var(--font-mono);">
+          --%
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; width: 100%;">
+        <a href="{% url 'interview_report' interview.id %}" class="btn btn-primary btn-lg" style="width: 100%; text-align: center; justify-content: center;">
+          View Evaluation Scorecard &rarr;
+        </a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-lg" style="width: 100%; text-align: center; justify-content: center;">
+          Return to Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+  import { TechCheckWizard } from "{% static 'js/tech-check.js' %}";
+  import { InterviewStudioEngine } from "{% static 'js/interview-studio.js' %}";
+  import { PostureBaselineCalibrator, PostureGazeTracker } from "{% static 'js/mediapipe-cv.js' %}";
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const interviewId = "{{ interview.id }}";
+    const saveEndpoint = "{% url 'save_tech_check' interview.id %}";
+    const startEndpoint = "{% url 'start_interview_api' interview.id %}";
+    const answerEndpoint = "{% url 'submit_answer_api' interview.id %}";
+    const hintEndpoint = "{% url 'hint_question_api' interview.id %}";
+    const stateEndpoint = "{% url 'interview_state_api' interview.id %}";
+    const calibrationEndpoint = "{% url 'save_calibration' interview.id %}";
+    const telemetryEndpoint = "{% url 'save_posture_telemetry' interview.id %}";
+    const dashboardUrl = "{% url 'dashboard' %}";
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const interviewStatus = "{{ interview.status }}";
+
+    let activeStream = null;
+    let postureTracker = null;
+
+    // Helper to start studio session
+    function launchLiveStudio(stream = null, baseline = null) {
+      document.getElementById('step-panel-consent').style.display = 'none';
+      document.getElementById('step-panel-analysis').style.display = 'none';
+      document.getElementById('step-panel-studio').style.display = 'none';
+      document.getElementById('step-panel-calibration').style.display = 'none';
+      document.getElementById('tech-check-stepper').style.display = 'none';
+      document.getElementById('step-panel-interview-live').style.display = 'block';
+
+      // Attach stream to studio camera feed
+      const studioVideo = document.getElementById('studio-live-video');
+      const postureBadge = document.getElementById('studio-posture-status-badge');
+      const postureText = document.getElementById('studio-posture-status-text');
+
+      function initTracker() {
+        postureTracker = new PostureGazeTracker({
+          videoEl: studioVideo,
+          telemetryEndpoint: telemetryEndpoint,
+          csrfToken: csrfToken,
+          baseline: baseline || { face_center_x: 0.50, face_center_y: 0.42 },
+          onStatusChange: (status, message, severity) => {
+            if (!postureBadge || !postureText) return;
+            postureText.textContent = message;
+            postureBadge.className = 'posture-status-hud-badge';
+
+            if (status === 'good') {
+              postureBadge.classList.add('hud-good');
+            } else if (severity === 'high') {
+              postureBadge.classList.add('hud-alert');
+            } else {
+              postureBadge.classList.add('hud-warning');
+            }
+          }
+        });
+        postureTracker.start();
+      }
+
+      if (studioVideo) {
+        if (stream) {
+          studioVideo.srcObject = stream;
+          initTracker();
+        } else {
+          navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            .then(s => { 
+              studioVideo.srcObject = s;
+              initTracker();
+            })
+            .catch(err => console.warn("Live studio video loopback notice:", err));
+        }
+      }
+
+      const studioEngine = new InterviewStudioEngine({
+        interviewId: interviewId,
+        persona: "{{ interview.persona }}",
+        personaDisplay: "{{ interview.get_persona_display }}",
+        csrfToken: csrfToken,
+        startEndpoint: startEndpoint,
+        answerEndpoint: answerEndpoint,
+        hintEndpoint: hintEndpoint,
+        isAnxietyFree: {% if interview.mode == 'anxiety_free' %}true{% else %}false{% endif %},
+        stateEndpoint: stateEndpoint,
+        dashboardUrl: dashboardUrl,
+        onCompleted: () => { if (postureTracker) postureTracker.stop(); }
+      });
+      window.addEventListener("beforeunload", () => { if (postureTracker) postureTracker.stop(); });
+
+      studioEngine.init();
+    }
+
+    // Calibration Flow Trigger
+    function startCalibrationFlow(stream) {
+      document.getElementById('step-panel-studio').style.display = 'none';
+      document.getElementById('step-panel-calibration').style.display = 'block';
+
+      const calibVideo = document.getElementById('calibration-video');
+      if (calibVideo && stream) {
+        calibVideo.srcObject = stream;
+      }
+
+      const countdownText = document.getElementById('calibration-countdown-secs');
+      const circleProgress = document.getElementById('calibration-circle-progress');
+      const circumference = 376.99; // 2 * pi * 60
+
+      const calibrator = new PostureBaselineCalibrator({
+        videoEl: calibVideo,
+        saveEndpoint: calibrationEndpoint,
+        csrfToken: csrfToken,
+        onProgress: (remainingSecs, percent) => {
+          if (countdownText) countdownText.textContent = remainingSecs;
+          if (circleProgress) {
+            const offset = circumference - (percent / 100) * circumference;
+            circleProgress.style.strokeDashoffset = offset;
+          }
+        },
+        onComplete: (baseline) => {
+          // Calibration done, advance to live studio!
+          launchLiveStudio(stream, baseline);
+        }
+      });
+
+      calibrator.start();
+    }
+
+    // If session is already in progress, jump straight to live studio!
+    if (interviewStatus === 'in_progress') {
+      launchLiveStudio();
+      return;
+    }
+
+    // Otherwise run Tech Check Wizard
+    const wizard = new TechCheckWizard({
+      interviewId: interviewId,
+      saveEndpoint: saveEndpoint,
+      onCompleted: (result, stream) => {
+        activeStream = stream;
+        document.getElementById('step-panel-analysis').style.display = 'none';
+        document.getElementById('step-panel-studio').style.display = 'block';
+
+        const enterRoomBtn = document.getElementById('btn-enter-active-room');
+        if (enterRoomBtn) {
+          enterRoomBtn.addEventListener('click', () => {
+            startCalibrationFlow(activeStream);
+          });
+        }
+      }
+    });
+
+    if (window.location.hash === '#tech-check') {
+      const consentBtn = document.getElementById('btn-grant-consent');
+      if (consentBtn) consentBtn.click();
+    }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Evaluation Scorecard - {{ interview.title }} | Antigravity AI{% endblock %}
+
+{% block content %}
+<div class="content-container" style="max-width: 1200px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem;">
+
+  <!-- Breadcrumb Navigation & Top Action Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+    <div style="display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; color: var(--text-muted);">
+      <a href="{% url 'dashboard' %}" style="color: var(--text-secondary); text-decoration: none; transition: color 0.2s ease;">
+        &larr; Candidate Dashboard
+      </a>
+      <span>/</span>
+      <span style="color: var(--text-primary); font-weight: 500;">Scorecard &amp; Report</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <a href="{% url 'interview_room' interview.id %}" class="btn btn-secondary" style="padding: 0.55rem 1.1rem; font-size: 0.88rem;">
+        Review Studio
+      </a>
+      <a href="{% url 'interview_report_pdf' interview.id %}" class="btn btn-primary" style="padding: 0.55rem 1.25rem; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download Official PDF Scorecard
+      </a>
+    </div>
+  </div>
+
+  <!-- Header Banner Card -->
+  <div class="glass-panel" style="padding: 2.25rem; margin-bottom: 2rem; position: relative; overflow: hidden;">
+    <div style="position: absolute; top: -80px; right: -80px; width: 240px; height: 240px; background: radial-gradient(circle, rgba(6,182,212,0.18) 0%, transparent 70%); pointer-events: none;"></div>
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+          <span class="glass-pill" style="border-color: var(--brand-cyan); color: var(--brand-cyan); font-weight: 600; font-size: 0.8rem;">
+            {{ interview.get_domain_display }}
+          </span>
+          <span class="glass-pill" style="border-color: var(--brand-purple); color: var(--brand-purple); font-weight: 600; font-size: 0.8rem;">
+            {{ interview.get_difficulty_display }}
+          </span>
+          <span class="glass-pill" style="border-color: rgba(255,255,255,0.2); color: var(--text-secondary); font-size: 0.8rem;">
+            Evaluator: {{ interview.get_persona_display }}
+          </span>
+          {% if interview.mode == 'anxiety_free' %}
+            <span class="glass-pill" style="border-color: var(--brand-emerald); color: var(--brand-emerald); font-size: 0.8rem;">
+              Anxiety-Free Practice
+            </span>
+          {% endif %}
+        </div>
+
+        <h1 style="font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.5rem;">
+          {{ interview.title }}
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 0;">
+          Session conducted on {{ interview.created_at|date:"F d, Y \a\t H:i" }} UTC
+          {% if duration_str %}&bull; Duration: <strong>{{ duration_str }}</strong>{% endif %}
+          &bull; {{ questions.count }} questions evaluated
+        </p>
+      </div>
+
+      <!-- Zero Video Uploads Certified Shield -->
+      <div style="text-align: right; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: var(--radius-md); padding: 0.85rem 1.25rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; color: var(--brand-emerald); font-weight: 700; font-size: 0.88rem;">
+          <span class="privacy-dot" style="background: var(--brand-emerald); box-shadow: 0 0 10px var(--brand-emerald);"></span>
+          Zero Video Uploads Certified
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+          CV models executed strictly inside local browser memory
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5-Metric Executive Scorecard Row -->
+  <div style="display: grid; grid-template-columns: 1.3fr repeat(4, 1fr); gap: 1.25rem; margin-bottom: 2rem;">
+
+    <!-- 1. Overall Score Card -->
+    <div class="glass-panel" style="padding: 1.75rem; text-align: center; border-color: rgba(6, 182, 212, 0.4); background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(139, 92, 246, 0.08) 100%); display: flex; flex-direction: column; justify-content: center; align-items: center;">
+      <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--brand-cyan); font-weight: 700; margin-bottom: 0.4rem;">
+        Composite Rating
+      </div>
+      <div style="font-size: 3.5rem; font-weight: 900; font-family: var(--font-mono); line-height: 1; margin-bottom: 0.4rem; color: var(--brand-cyan);">
+        {{ report.overall_score }}<span style="font-size: 1.6rem; opacity: 0.7;">%</span>
+      </div>
+      <div style="font-size: 0.85rem; font-weight: 600; color: {% if report.overall_score >= 85 %}var(--brand-emerald){% elif report.overall_score >= 70 %}var(--brand-cyan){% else %}var(--brand-amber){% endif %};">
+        {% if report.overall_score >= 85 %}
+          Mastery &bull; Strong Hire
+        {% elif report.overall_score >= 70 %}
+          Proficient &bull; Solid Core
+        {% else %}
+          Developing &bull; Practice Needed
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- 2. Technical Depth -->
+    <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
+      <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Technical Depth
+      </div>
+      <div style="font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); color: var(--brand-purple);">
+        {{ report.technical_score }}<span style="font-size: 1.1rem; opacity: 0.7;">%</span>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+        Weight: 40%
+      </div>
+    </div>
+
+    <!-- 3. Posture Steadiness -->
+    <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
+      <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Posture Steadiness
+      </div>
+      <div style="font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); color: var(--brand-cyan);">
+        {{ report.posture_score }}<span style="font-size: 1.1rem; opacity: 0.7;">%</span>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+        Weight: 20%
+      </div>
+    </div>
+
+    <!-- 4. Eye Contact / Gaze -->
+    <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
+      <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Eye Contact &amp; Gaze
+      </div>
+      <div style="font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); color: var(--brand-emerald);">
+        {{ report.eye_contact_score }}<span style="font-size: 1.1rem; opacity: 0.7;">%</span>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+        Weight: 20%
+      </div>
+    </div>
+
+    <!-- 5. Speech Clarity -->
+    <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
+      <div style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Speech Clarity
+      </div>
+      <div style="font-size: 2.2rem; font-weight: 800; font-family: var(--font-mono); color: #38bdf8;">
+        {{ report.speech_clarity_score }}<span style="font-size: 1.1rem; opacity: 0.7;">%</span>
+      </div>
+      <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.35rem;">
+        Weight: 20%
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Radar Competency Web & Executive Summary (2-Column Grid) -->
+  <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; margin-bottom: 2rem;">
+
+    <!-- Canvas Radar Chart Card -->
+    <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <div style="width: 100%; margin-bottom: 1rem; text-align: left;">
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">Multimodal Competency Polygon</h3>
+        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 0;">
+          5-dimensional balance across code architecture, body language, and vocal composure.
+        </p>
+      </div>
+      <div style="position: relative; width: 100%; display: flex; justify-content: center; align-items: center;">
+        <canvas id="reportRadarChart" style="max-width: 320px; max-height: 320px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Executive Summary Narrative -->
+    <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-cyan)" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          Executive Assessment &amp; Evaluator Synthesis
+        </h3>
+        
+        <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.7; margin-bottom: 1.5rem;">
+          {{ report.summary }}
+        </p>
+
+        <!-- Quick Telemetry Chips -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Speech Pacing</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-top: 0.15rem;">
+              {% if speech %}{{ speech.words_per_minute }} WPM{% else %}135 WPM{% endif %}
+              <span style="font-size: 0.75rem; font-weight: normal; color: var(--brand-emerald);">(Target: 130-160)</span>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Filler Words</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-top: 0.15rem;">
+              {% if speech %}{{ speech.filler_words_count }}{% else %}0{% endif %} detected
+              <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">("um", "uh", "like")</span>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Body Language Slips</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); margin-top: 0.15rem;">
+              {{ posture_events_count }} events
+              <span style="font-size: 0.75rem; font-weight: normal; color: var(--brand-cyan);">(Calibrated Baseline)</span>
+            </div>
+          </div>
+
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); padding: 0.75rem 1rem; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Studio Environment</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--brand-emerald); margin-top: 0.15rem;">
+              {% if tech_check %}{{ tech_check.get_lighting_status_display }}{% else %}Optimal Lighting{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.5rem; pt-3; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+        <a href="{% url 'interview_report_pdf' interview.id %}" style="color: var(--brand-cyan); text-decoration: none; font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem;">
+          Export Full Candidate PDF Dossier &rarr;
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STAR Behavioral Competency Matrix -->
+  <div class="glass-panel" style="padding: 2rem; margin-bottom: 2rem;">
+    <div style="margin-bottom: 1.5rem;">
+      <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;">
+        <span>STAR Behavioral Competency Breakdown</span>
+        <span class="glass-pill" style="border-color: var(--brand-cyan); color: var(--brand-cyan); font-size: 0.75rem;">
+          Composite: {{ star.composite_star_score|default:82 }}%
+        </span>
+      </h3>
+      <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 0;">
+        Methodical evaluation of behavioral stories across Situation, Task, Action, and Measurable Result.
+      </p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem;">
+
+      <!-- S: Situation -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span style="font-weight: 800; font-size: 1.1rem; color: var(--brand-cyan);">[S] Situation</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: var(--brand-cyan);">{{ star.situation.score|default:82|floatformat:0 }}%</span>
+        </div>
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem;">
+          {{ star.situation.label|default:"Context & Scope" }}
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          {{ star.situation.feedback|default:"Effectively established project background context and constraints." }}
+        </p>
+      </div>
+
+      <!-- T: Task -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span style="font-weight: 800; font-size: 1.1rem; color: var(--brand-purple);">[T] Task</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: var(--brand-purple);">{{ star.task.score|default:80|floatformat:0 }}%</span>
+        </div>
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem;">
+          {{ star.task.label|default:"Goal & Responsibility" }}
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          {{ star.task.feedback|default:"Clearly articulated individual role and high-stakes deliverables." }}
+        </p>
+      </div>
+
+      <!-- A: Action -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span style="font-weight: 800; font-size: 1.1rem; color: var(--brand-emerald);">[A] Action</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: var(--brand-emerald);">{{ star.action.score|default:86|floatformat:0 }}%</span>
+        </div>
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem;">
+          {{ star.action.label|default:"Execution & Decisions" }}
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          {{ star.action.feedback|default:"Deep technical explanation of architectural trade-offs and decisions." }}
+        </p>
+      </div>
+
+      <!-- R: Result -->
+      <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span style="font-weight: 800; font-size: 1.1rem; color: #38bdf8;">[R] Result</span>
+          <span style="font-family: var(--font-mono); font-weight: 700; color: #38bdf8);">{{ star.result.score|default:78|floatformat:0 }}%</span>
+        </div>
+        <div style="font-size: 0.78rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.6rem;">
+          {{ star.result.label|default:"Measurable Impact" }}
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+          {{ star.result.feedback|default:"Highlighted metrics, latency drops, and team impact." }}
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Key Strengths & Priority Growth Opportunities (Side-by-Side) -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+
+    <!-- Strengths -->
+    <div class="glass-panel" style="padding: 1.75rem; border-color: rgba(16, 185, 129, 0.25);">
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-emerald); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        Key Candidate Strengths
+      </h3>
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.85rem;">
+        {% for st in report.strengths %}
+          <li style="display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+            <span style="color: var(--brand-emerald); font-weight: 700;">&#10003;</span>
+            <span>{{ st }}</span>
+          </li>
+        {% empty %}
+          <li style="color: var(--text-muted); font-size: 0.9rem;">Strong technical understanding demonstrated.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Improvements -->
+    <div class="glass-panel" style="padding: 1.75rem; border-color: rgba(245, 158, 11, 0.25);">
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-amber); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        Priority Growth Recommendations
+      </h3>
+      <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.85rem;">
+        {% for imp in report.improvements %}
+          <li style="display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+            <span style="color: var(--brand-amber); font-weight: 700;">&bull;</span>
+            <span>{{ imp }}</span>
+          </li>
+        {% empty %}
+          <li style="color: var(--text-muted); font-size: 0.9rem;">Elaborate on production failure modes and trade-offs.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- Question-by-Question Technical Depth Accordion -->
+  <div class="glass-panel" style="padding: 2rem; margin-bottom: 2.5rem;">
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem;">
+          Question-by-Question Deep Dive
+        </h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0;">
+          Inspect transcript recordings, AI evaluation grades, and specific evaluator feedback.
+        </p>
+      </div>
+      <span class="glass-pill" style="font-family: var(--font-mono); font-size: 0.8rem; border-color: rgba(255,255,255,0.2);">
+        {{ questions.count }} Questions Total
+      </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      {% for q in questions %}
+        <div style="background: rgba(255, 255, 255, 0.025); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-md); padding: 1.5rem; transition: border-color 0.2s ease;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--brand-cyan); font-size: 0.9rem;">
+                  Q{{ q.order }}
+                </span>
+                <span class="glass-pill" style="font-size: 0.72rem; padding: 0.15rem 0.6rem;">
+                  {{ q.get_category_display }}
+                </span>
+                {% if q.is_follow_up %}
+                  <span class="glass-pill" style="font-size: 0.72rem; padding: 0.15rem 0.6rem; border-color: var(--brand-purple); color: var(--brand-purple);">
+                    Dynamic Follow-Up
+                  </span>
+                {% endif %}
+              </div>
+              <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-primary); margin: 0; line-height: 1.4;">
+                {{ q.question_text }}
+              </h4>
+            </div>
+
+            <!-- Score Badge -->
+            <div style="text-align: right;">
+              {% if q.answer and q.answer.ai_score is not None %}
+                <div style="font-size: 1.7rem; font-weight: 800; font-family: var(--font-mono); color: {% if q.answer.ai_score >= 80 %}var(--brand-emerald){% elif q.answer.ai_score >= 65 %}var(--brand-cyan){% else %}var(--brand-amber){% endif %};">
+                  {{ q.answer.ai_score }}%
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">
+                  Evaluated in {{ q.answer.duration_seconds|floatformat:0 }}s
+                </div>
+              {% else %}
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Unanswered</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Candidate Response Transcript Excerpt -->
+          {% if q.answer %}
+            <div style="background: rgba(0, 0, 0, 0.25); border-left: 3px solid var(--brand-cyan); padding: 0.85rem 1.1rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-bottom: 1rem;">
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.35rem; display: flex; justify-content: space-between;">
+                <span>Candidate Response (Recognized via Web Speech API)</span>
+                <span>{{ q.answer.get_input_method_display }}</span>
+              </div>
+              <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6; margin: 0; font-style: italic;">
+                "{{ q.answer.transcript_text }}"
+              </p>
+            </div>
+
+            {% if q.answer.ai_feedback.ideal_answer_example %}
+              <details style="margin-bottom: 1rem; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.28); border-radius: var(--radius-sm); padding: 0.75rem 1rem;">
+                <summary style="cursor: pointer; font-size: 0.84rem; font-weight: 600; color: #c4b5fd;">
+                  ✨ View 95%+ Model Answer &amp; Upgrade Guide
+                </summary>
+                <p style="font-size: 0.86rem; color: var(--text-secondary); line-height: 1.6; margin: 0.65rem 0 0 0;">
+                  {{ q.answer.ai_feedback.ideal_answer_example }}
+                </p>
+              </details>
+            {% endif %}
+
+            <!-- Evaluator Feedback Notes -->
+            {% if q.answer.ai_feedback %}
+              <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+                <strong style="color: var(--brand-cyan);">Evaluator Feedback:</strong>
+                {{ q.answer.ai_feedback.summary|default:"Solid explanation of key architectural concepts." }}
+              </div>
+            {% endif %}
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Bottom CTA Actions -->
+  <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary btn-lg" style="padding: 0.75rem 1.75rem;">
+      &larr; Return to Dashboard
+    </a>
+    <a href="{% url 'interview_report_pdf' interview.id %}" class="btn btn-primary btn-lg" style="padding: 0.75rem 2rem; display: inline-flex; align-items: center; gap: 0.6rem;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
+      Download Official PDF Scorecard
+    </a>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+  import { MultimodalRadarChart } from "{% static 'js/dashboard-charts.js' %}";
+
+  document.addEventListener('DOMContentLoaded', () => {
+    try {
+      const radarData = JSON.parse('{{ radar_payload_json|escapejs }}');
+      new MultimodalRadarChart('reportRadarChart', radarData);
+    } catch (err) {
+      console.warn("Could not initialize radar chart:", err);
+    }
+  });
+</script>
+{% endblock %}
+

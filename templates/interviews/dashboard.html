@@ -1,0 +1,461 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Candidate Dashboard &bull; InterViewStudio AI{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem; padding-bottom: 5rem;">
+
+  <!-- Dashboard Greeting Header -->
+  <div class="glass-panel" style="padding: 2rem 2.25rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <h1 style="font-size: 2rem; font-weight: 800; letter-spacing: -0.02em;">
+          Candidate Workspace
+        </h1>
+        <span class="glass-pill" style="font-size: 0.8rem; border-color: var(--brand-cyan);">
+          {{ request.user.profile.target_role }}
+        </span>
+      </div>
+      <p style="color: var(--text-secondary); font-size: 0.95rem;">
+        Welcome back, <strong>{{ request.user.username }}</strong>. Real-time edge CV models ready for your next practice run.
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <button type="button" class="btn btn-secondary" id="open-profile-btn" data-open-modal="profile-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Profile &amp; Privacy
+      </button>
+      <button type="button" class="btn btn-primary" id="open-new-interview-btn" data-open-modal="new-interview-modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Interview Session
+      </button>
+    </div>
+  </div>
+
+  <!-- Metric Statistics Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem;">
+    <!-- Overall Score -->
+    <div class="glass-panel stat-card" style="text-align: left; padding: 1.5rem;">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+        Average Overall Score
+      </div>
+      <div class="stat-value" style="font-size: 2.4rem;">
+        {% if avg_overall %}{{ avg_overall }}%{% else %}&mdash;{% endif %}
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        Across {{ completed_sessions }} scored session{{ completed_sessions|pluralize }}
+      </div>
+    </div>
+
+    <!-- Posture Steadiness -->
+    <div class="glass-panel stat-card" style="text-align: left; padding: 1.5rem;">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+        Posture Steadiness
+      </div>
+      <div class="stat-value" style="font-size: 2.4rem; color: var(--brand-cyan);">
+        {% if avg_posture %}{{ avg_posture }}%{% else %}&mdash;{% endif %}
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        MediaPipe neutral baseline alignment
+      </div>
+    </div>
+
+    <!-- Eye Contact Gaze -->
+    <div class="glass-panel stat-card" style="text-align: left; padding: 1.5rem;">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+        Eye Contact &amp; Gaze
+      </div>
+      <div class="stat-value" style="font-size: 2.4rem; color: var(--brand-purple);">
+        {% if avg_eye_contact %}{{ avg_eye_contact }}%{% else %}&mdash;{% endif %}
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        Screen center gaze adherence
+      </div>
+    </div>
+
+    <!-- Speech Pacing -->
+    <div class="glass-panel stat-card" style="text-align: left; padding: 1.5rem;">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+        Speech Pacing
+      </div>
+      <div class="stat-value" style="font-size: 2.4rem; color: var(--brand-emerald);">
+        {% if avg_wpm %}{{ avg_wpm }} <span style="font-size: 1rem; color: var(--text-secondary);">WPM</span>{% else %}&mdash;{% endif %}
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        Target optimal: 130 - 150 WPM
+      </div>
+    </div>
+
+    <!-- Total Practice Volume -->
+    <div class="glass-panel stat-card" style="text-align: left; padding: 1.5rem;">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+        Total Sessions
+      </div>
+      <div class="stat-value" style="font-size: 2.4rem;">
+        {{ total_sessions }}
+      </div>
+      <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">
+        {{ practice_sessions }} anxiety-free practice
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Analytics Grid (Radar Competency Web + Session Breakdown) -->
+  <div style="display: grid; grid-template-columns: 1fr 1.6fr; gap: 1.5rem; margin-bottom: 3rem;">
+    <!-- Canvas Radar Chart Card -->
+    <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <div style="width: 100%; margin-bottom: 1rem; text-align: left;">
+        <h3 style="font-size: 1.15rem; font-weight: 700;">Multimodal Competency Web</h3>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+          Balanced analysis across technical, CV posture, gaze, and speech metrics.
+        </p>
+      </div>
+      <div style="position: relative; width: 100%; display: flex; justify-content: center;">
+        <canvas id="radarChart" style="max-width: 340px; max-height: 340px;"></canvas>
+      </div>
+    </div>
+
+    <!-- Preparation Guidance & Strategy -->
+    <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between;">
+      <div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">
+          Interview Readiness Insights
+        </h3>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.25rem;">
+          Our AI analyzes sustained deviations in body language, vocal hesitation, and technical depth.
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <div style="display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.06);">
+            <div style="color: var(--brand-cyan); font-size: 1.2rem;">&#10003;</div>
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">Client-Side CV Calibration</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Neutral posture calibration eliminates false positives from camera angle tilts.</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.06);">
+            <div style="color: var(--brand-purple); font-size: 1.2rem;">&#10003;</div>
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">Adaptive Follow-up Probes</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">The AI tests edge cases and concurrency tradeoffs based on your live answers.</div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.75rem 1rem; background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.06);">
+            <div style="color: var(--brand-emerald); font-size: 1.2rem;">&#10003;</div>
+            <div>
+              <div style="font-weight: 600; font-size: 0.9rem;">STAR Behavioral Framework</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">Every behavioral response is mapped to Situation, Task, Action, and quantifiable Result.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted);">Privacy Status: 100% In-Browser Execution</span>
+        <span class="glass-pill privacy-pill" style="font-size: 0.75rem;">Active Shield</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Past Mock Interviews List -->
+  <div class="glass-panel" style="padding: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h2 style="font-size: 1.35rem; font-weight: 700;">Interview History &amp; Sessions</h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+          Review timestamped logs, resume ongoing sessions, or inspect complete PDF report evaluation cards.
+        </p>
+      </div>
+      <button type="button" class="btn btn-primary" data-open-modal="new-interview-modal">
+        + New Session
+      </button>
+    </div>
+
+    {% if interviews %}
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">
+              <th style="padding: 1rem 0.75rem;">Session Title &amp; Domain</th>
+              <th style="padding: 1rem 0.75rem;">Interviewer Persona</th>
+              <th style="padding: 1rem 0.75rem;">Mode</th>
+              <th style="padding: 1rem 0.75rem;">Status</th>
+              <th style="padding: 1rem 0.75rem;">Score</th>
+              <th style="padding: 1rem 0.75rem; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in interviews %}
+              <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05); transition: background 0.15s ease;">
+                <td style="padding: 1rem 0.75rem;">
+                  <div style="font-weight: 600; color: var(--text-primary);">{{ item.title }}</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">
+                    Created {{ item.created_at|date:"M d, Y" }} &bull; ID: {{ item.id|stringformat:"s"|slice:":8" }}...
+                  </div>
+                </td>
+                <td style="padding: 1rem 0.75rem; color: var(--text-secondary);">
+                  {{ item.get_persona_display }}
+                </td>
+                <td style="padding: 1rem 0.75rem;">
+                  {% if item.mode == 'anxiety_free' %}
+                    <span class="glass-pill" style="font-size: 0.75rem; border-color: rgba(16, 185, 129, 0.3); color: #34d399;">Anxiety-Free</span>
+                  {% else %}
+                    <span class="glass-pill" style="font-size: 0.75rem; border-color: rgba(6, 182, 212, 0.3); color: var(--brand-cyan);">Standard Scored</span>
+                  {% endif %}
+                </td>
+                <td style="padding: 1rem 0.75rem;">
+                  {% if item.status == 'completed' %}
+                    <span style="color: var(--brand-emerald); font-weight: 600; font-size: 0.85rem;">&#10003; Completed</span>
+                  {% elif item.status == 'in_progress' %}
+                    <span style="color: var(--brand-amber); font-weight: 600; font-size: 0.85rem;">In Progress</span>
+                  {% else %}
+                    <span style="color: var(--brand-cyan); font-weight: 600; font-size: 0.85rem;">Setup / Pending</span>
+                  {% endif %}
+                </td>
+                <td style="padding: 1rem 0.75rem;">
+                  {% if item.report %}
+                    <strong style="color: var(--brand-cyan); font-size: 1.05rem;">{{ item.report.overall_score }}%</strong>
+                  {% else %}
+                    <span style="color: var(--text-muted);">&mdash;</span>
+                  {% endif %}
+                </td>
+                <td style="padding: 1rem 0.75rem; text-align: right;">
+                  <div style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                    {% if item.status == 'completed' %}
+                      <a href="{% url 'interview_report' item.id %}" class="btn btn-primary" style="padding: 0.4rem 0.85rem; font-size: 0.82rem;" title="View Evaluation Scorecard">
+                        Scorecard
+                      </a>
+                      <a href="{% url 'interview_report_pdf' item.id %}" class="btn btn-secondary" style="padding: 0.4rem 0.65rem; font-size: 0.82rem;" title="Download PDF Report">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                      </a>
+                    {% else %}
+                      <a href="{% url 'interview_room' item.id %}" class="btn btn-secondary" style="padding: 0.4rem 0.85rem; font-size: 0.82rem;">
+                        Enter Studio
+                      </a>
+                    {% endif %}
+                    <form method="POST" action="{% url 'delete_interview' item.id %}" onsubmit="return confirm('Are you sure you want to delete this interview session?');" style="display: inline;">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-ghost" style="padding: 0.4rem 0.6rem; color: var(--brand-rose);" title="Delete Session" aria-label="Delete Session">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 4rem 1rem;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;">No Interview Sessions Yet</h3>
+        <p style="color: var(--text-secondary); max-width: 440px; margin: 0 auto 1.5rem; font-size: 0.95rem;">
+          Start your first mock session to test your lighting, posture, speech clarity, and technical skills.
+        </p>
+        <button type="button" class="btn btn-primary btn-lg" data-open-modal="new-interview-modal">
+          Launch First Mock Interview
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- =========================================================================
+     NEW INTERVIEW SETUP MODAL
+     ========================================================================= -->
+<div id="new-interview-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="new-interview-modal-title">
+  <div class="glass-panel modal-content-card" style="padding: 2.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h2 id="new-interview-modal-title" style="font-size: 1.5rem; font-weight: 700;">Configure Mock Interview</h2>
+      <button type="button" data-close-modal="new-interview-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.75rem; line-height: 1; cursor: pointer; padding: 0.25rem 0.5rem;" aria-label="Close modal">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'create_interview' %}">
+      {% csrf_token %}
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Domain Curriculum</label>
+          <div class="form-control-wrap">
+            <select name="domain" class="form-input">
+              {% for val, label in domains %}
+                <option value="{{ val }}" {% if val == request.user.profile.preferred_domain %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Seniority Level</label>
+          <div class="form-control-wrap">
+            <select name="difficulty" class="form-input">
+              {% for val, label in difficulties %}
+                <option value="{{ val }}" {% if val == 'mid' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label">Interviewer Persona</label>
+          <div class="form-control-wrap">
+            <select name="persona" class="form-input">
+              {% for val, label in personas %}
+                <option value="{{ val }}" {% if val == 'tech_lead' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Practice Mode</label>
+          <div class="form-control-wrap">
+            <select name="mode" class="form-input">
+              {% for val, label in modes %}
+                <option value="{{ val }}" {% if request.user.profile.anxiety_mode_default and val == 'anxiety_free' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Target Job Description (Optional)</label>
+        <div class="form-control-wrap">
+          <textarea name="job_description" class="form-input" rows="3" placeholder="Paste the job description or role requirements to tailor the AI questions..."></textarea>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Candidate Resume Highlights (Optional)</label>
+        <div class="form-control-wrap">
+          <textarea name="resume_text" class="form-input" rows="3" placeholder="Paste your key projects, tech stack, and experience highlights..."></textarea>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.75rem;">
+        <button type="button" class="btn btn-secondary btn-block" data-close-modal="new-interview-modal">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary btn-block">
+          Launch Studio &amp; Tech Check
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- =========================================================================
+     CANDIDATE PROFILE & PRIVACY SETTINGS MODAL
+     ========================================================================= -->
+<div id="profile-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+  <div class="glass-panel modal-content-card" style="max-width: 520px; padding: 2.25rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h2 id="profile-modal-title" style="font-size: 1.4rem; font-weight: 700;">Candidate Profile &amp; Privacy</h2>
+      <button type="button" data-close-modal="profile-modal" style="background: none; border: none; color: var(--text-muted); font-size: 1.75rem; line-height: 1; cursor: pointer; padding: 0.25rem 0.5rem;" aria-label="Close modal">&times;</button>
+    </div>
+
+    <!-- Update Preferences Form -->
+    <form method="POST" action="{% url 'update_profile' %}">
+      {% csrf_token %}
+      <div class="form-group">
+        <label class="form-label">Target Role</label>
+        <div class="form-control-wrap">
+          <input type="text" name="target_role" class="form-input" value="{{ request.user.profile.target_role }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Preferred Engineering Domain</label>
+        <div class="form-control-wrap">
+          <select name="preferred_domain" class="form-input">
+            {% for val, label in domains %}
+              <option value="{{ val }}" {% if val == request.user.profile.preferred_domain %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-checkbox-row">
+        <label class="checkbox-label">
+          <input type="checkbox" name="anxiety_mode_default" class="checkbox-input" {% if request.user.profile.anxiety_mode_default %}checked{% endif %}>
+          <span>Default sessions to Anxiety-Free Practice Mode</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" style="margin-bottom: 2rem;">
+        Save Preferences
+      </button>
+    </form>
+
+    <!-- Zero-Data Privacy Delete Zone -->
+    <div style="padding-top: 1.5rem; border-top: 1px solid rgba(244, 63, 94, 0.25);">
+      <h4 style="color: var(--brand-rose); font-size: 1rem; margin-bottom: 0.35rem;">Privacy Data Deletion</h4>
+      <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.5;">
+        Permanently remove your candidate account, all interview sessions, body language telemetry, and scorecards. This cannot be undone.
+      </p>
+      <form method="POST" action="{% url 'delete_account' %}" onsubmit="return confirm('Are you completely sure? This will permanently delete your account and all interview records.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-secondary" style="border-color: rgba(244, 63, 94, 0.4); color: var(--brand-rose); width: 100%;">
+          Purge All My Data &amp; Delete Account
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="module">
+  import { MultimodalRadarChart } from "{% static 'js/dashboard-charts.js' %}";
+
+  function initDashboard() {
+    try {
+      const radarData = JSON.parse('{{ radar_metrics_json|safe }}');
+      new MultimodalRadarChart('radarChart', radarData);
+    } catch (e) {
+      console.warn("Radar chart init skipped:", e);
+    }
+
+    // Direct event listener fallback for modal buttons
+    const newModal = document.getElementById('new-interview-modal');
+    const profileModal = document.getElementById('profile-modal');
+
+    document.querySelectorAll('[data-open-modal="new-interview-modal"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (newModal) {
+          newModal.classList.add('is-active');
+          newModal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-open-modal="profile-modal"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (profileModal) {
+          profileModal.classList.add('is-active');
+          profileModal.style.display = 'flex';
+          document.body.style.overflow = 'hidden';
+        }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  } else {
+    initDashboard();
+  }
+</script>
+{% endblock %}

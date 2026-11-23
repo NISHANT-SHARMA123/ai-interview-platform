@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="description" content="Master technical and behavioral engineering interviews with real-time browser-based computer vision and adaptive conversational AI. Zero video uploads guarantee.">
+  <title>{% block title %}AI Mock Interview Platform | Multimodal Engineering Interview Studio{% endblock %}</title>
+
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="{% static 'img/favicon.svg' %}">
+
+  <!-- Core Glassmorphism Design System -->
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <!-- 3D Interactive Canvas & Ambient Aurora Glow Blobs -->
+  <div class="aurora-background" aria-hidden="true">
+    <canvas id="bg-3d-canvas" class="bg-3d-canvas"></canvas>
+    <div class="cyber-scan-overlay"></div>
+    <div class="aurora-blob aurora-blob-1"></div>
+    <div class="aurora-blob aurora-blob-2"></div>
+    <div class="aurora-blob aurora-blob-3"></div>
+  </div>
+
+  <!-- Glassmorphic Sticky Header -->
+  <header class="navbar" id="main-navbar">
+    <div class="nav-container">
+      <a href="{% url 'landing' %}" class="brand-logo" id="nav-brand-logo">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+            <line x1="12" y1="19" x2="12" y2="22"></line>
+          </svg>
+        </div>
+        <span>InterView<span class="gradient-text">Studio</span></span>
+      </a>
+
+      <nav aria-label="Primary Navigation">
+        <ul class="nav-links">
+          <li><a href="{% url 'landing' %}#features">Features</a></li>
+          <li><a href="{% url 'landing' %}#domains">Domains</a></li>
+          <li><a href="{% url 'landing' %}#how-it-works">How It Works</a></li>
+          <li><a href="{% url 'landing' %}#privacy">Privacy Guarantee</a></li>
+          <li><a href="{% url 'landing' %}#pricing">Pricing</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'dashboard' %}" class="btn btn-secondary" id="nav-dashboard-btn">Dashboard</a>
+          <a href="{% url 'logout' %}" class="btn btn-ghost" id="nav-logout-btn">Log out</a>
+        {% else %}
+          <a href="{% url 'login' %}" class="btn btn-ghost" id="nav-login-btn">Sign in</a>
+          <a href="{% url 'signup' %}" class="btn btn-primary" id="nav-signup-btn">Get Started</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Flash Toast Notifications -->
+  {% if messages %}
+    <div class="toast-container" id="toast-container" role="region" aria-live="polite">
+      {% for message in messages %}
+        <div class="toast {% if message.tags == 'error' %}toast-error{% else %}toast-success{% endif %}" role="alert">
+          <span>{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Main View Block -->
+  <main id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Glass Footer -->
+  <footer class="footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <strong>InterViewStudio AI</strong> — Privacy-First Engineering Mock Interviews
+        <p style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted);">
+          Zero Video Upload Architecture. All Computer Vision processing runs locally in your browser.
+        </p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="{% url 'landing' %}#features">Features</a></li>
+        <li><a href="{% url 'landing' %}#privacy">Privacy Policy</a></li>
+        <li><a href="{% url 'landing' %}#pricing">Plans</a></li>
+        <li><a href="{% url 'login' %}">Candidate Login</a></li>
+      </ul>
+      <div class="footer-copy">
+        &copy; 2026 InterViewStudio. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="module" src="{% static 'js/main.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
